@@ -1,0 +1,95 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Sat Feb 27 18:25:01 2021
+
+@author: Templar_KBCC
+"""
+
+import numpy as np
+import cv2
+#第一次初始化：由于参数太多，变量名矩阵名一定要写得非常清楚
+path="result_unity.jpg"
+terrain=cv2.imread(path)#等面积投影地图
+mapshape=[1024,2048]
+temperature_matrix=np.zeros(mapshape)
+humidity_matrix=np.zeros(mapshape)
+altitude_matrix=np.zeros(mapshape)
+water_exhaustion_matrix=np.zeros(mapshape)
+terrain_heat_absorb_matrix=np.ones(mapshape)
+terrain_heat_capacity_matrix=np.ones(mapshape)#比热容
+humidity_generate_matrix=np.ones(mapshape)
+#province_size_matrix=np.ones(mapshape)我发现是等面积投影，所以不需要了
+parameter_transfer_matrix=np.zeros(mapshape)#不需要初始化，只是留个坑
+saturation_humidity_matrix=np.ones(mapshape)#不需要初始化，只是留个坑
+is_water_matrix=np.zeros(mapshape)#不需要初始化，只是留个坑
+cloudy_generate_portion=0.008#我瞎猜的数
+outerspace_radiation_decay=0.8#我瞎猜的数
+direct_sun_heat_impact=2.0#我瞎写的数
+rain_water_exhaustion_multiplier=0.9
+transfer_kernel=[[0.1,1,0.1],
+                 [1  ,0,  1],#没有办法，为了计算速度快，只能忽略纵向横向接触面积不同的问题
+                 [0.1,1,0.1]]
+for i in range(mapshape[0]):
+    for j in range(mapshape[1]):
+        if terrain[i][j][0]==255 and terrain[i][j][1]==255:#极地
+            altitude_matrix[i][j]=200
+            water_exhaustion_matrix[i][j]=0.2
+            temperature_matrix[i][j]=-20
+            humidity_matrix[i][j]=0#0.5
+            terrain_heat_absorb_matrix[i][j]=0.1#这不是我猜的数hhhhh
+            terrain_heat_capacity_matrix[i][j]=1.0#极地也没有热力惯性，要不然有点奇怪，虽然实际上应该是有的
+            humidity_generate_matrix[i][j]=0.1
+            is_water_matrix[i][j]=0
+        elif terrain[i][j][0]==255 and terrain[i][j][1]==0:#水域
+            altitude_matrix[i][j]=0
+            water_exhaustion_matrix[i][j]=0.05
+            temperature_matrix[i][j]=10
+            humidity_matrix[i][j]=0#5.0
+            terrain_heat_absorb_matrix[i][j]=0.6#水域并不温度低
+            terrain_heat_capacity_matrix[i][j]=2#只给水域热力惯性
+            humidity_generate_matrix[i][j]=15
+            is_water_matrix[i][j]=1.00
+        elif terrain[i][j][1]==255:#平原或森林
+            altitude_matrix[i][j]=100
+            water_exhaustion_matrix[i][j]=0.05
+            temperature_matrix[i][j]=20
+            humidity_matrix[i][j]=0#3.0
+            terrain_heat_absorb_matrix[i][j]=0.8
+            terrain_heat_capacity_matrix[i][j]=1.0
+            humidity_generate_matrix[i][j]=5.5
+            is_water_matrix[i][j]=0
+        elif terrain[i][j][0]==37:#丘陵
+            altitude_matrix[i][j]=500
+            water_exhaustion_matrix[i][j]=0.5
+            temperature_matrix[i][j]=15
+            humidity_matrix[i][j]=0#3.0
+            terrain_heat_absorb_matrix[i][j]=0.7
+            terrain_heat_capacity_matrix[i][j]=1.0
+            humidity_generate_matrix[i][j]=2.0
+            is_water_matrix[i][j]=0
+        elif terrain[i][j][0]==255:#山地
+            altitude_matrix[i][j]=1500
+            water_exhaustion_matrix[i][j]=0.8#我好像懂了，平原湿度比山地低是因为平原一下雨湿度就掉下来了。。。，实际上下雨湿度不会怎么降的，主要还是看自然流失
+            temperature_matrix[i][j]=15
+            humidity_matrix[i][j]=0#3.0
+            terrain_heat_absorb_matrix[i][j]=0.6#山区应该温度低一点，这样冷空气外传，在山旁边下雨
+            terrain_heat_capacity_matrix[i][j]=1.0
+            humidity_generate_matrix[i][j]=1.0#省得光山区下雨
+            is_water_matrix[i][j]=0
+        elif terrain[i][j][0]==102:#沙漠
+            altitude_matrix[i][j]=150
+            water_exhaustion_matrix[i][j]=0.9#气死我了，沙漠下你妈雨
+            temperature_matrix[i][j]=25
+            humidity_matrix[i][j]=0#0.1这样从0开始就不会有开局沙漠疯狂降雨了？
+            terrain_heat_absorb_matrix[i][j]=1.0#其实就是反比热容参数了，后面那个比热容矩阵不要了
+            terrain_heat_capacity_matrix[i][j]=1
+            humidity_generate_matrix[i][j]=0.0
+            is_water_matrix[i][j]=0
+np.save("initial\\\\altitude_matrix",altitude_matrix)
+np.save("initial\\\\water_exhaustion_matrix",water_exhaustion_matrix)
+np.save("initial\\\\temperature_matrix",temperature_matrix)
+np.save("initial\\\\humidity_matrix",humidity_matrix)
+np.save("initial\\\\terrain_heat_absorb_matrix",terrain_heat_absorb_matrix)
+np.save("initial\\\\terrain_heat_capacity_matrix",terrain_heat_capacity_matrix)
+np.save("initial\\\\humidity_generate_matrix",humidity_generate_matrix)
+np.save("initial\\\\is_water_matrix",is_water_matrix)
